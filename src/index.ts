@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 const app = new Hono();
 import * as fs from 'fs';
 import csvParser from 'csv-parser';
@@ -40,62 +40,6 @@ interface Organization {
     departments: Department[];
 }
 
-function csvFileToString(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', (err, data) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(data);
-            }
-        });
-    });
-}
-
-function orgCsvToJson(csvData: string): Promise<Organization> {
-    return new Promise((resolve, reject) => {
-        const organization: Organization = { departments: [] };
-
-        const lines = csvData.split('\n').filter(line => line.trim() !== ''); // Remove empty lines
-        const headers = lines[0].split(',').map(header => header.trim());
-
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
-            if (values.length !== headers.length) {
-                reject('Invalid CSV format'); // Reject if the number of values does not match headers
-                return;
-            }
-
-            const employee: Employee = {
-                name: values[headers.indexOf('name')].trim(),
-                department: values[headers.indexOf('department')].trim(),
-                salary: parseInt(values[headers.indexOf('salary')].trim(), 10),
-                office: values[headers.indexOf('office')].trim(),
-                isManager: values[headers.indexOf('isManager')].trim() === 'TRUE',
-                skills: values.slice(headers.indexOf('skill1')).map(skill => skill.trim()).filter(skill => skill !== '')
-            };
-
-            const existingDepartment = organization.departments.find(dept => dept.name === employee.department);
-
-            if (existingDepartment) {
-                existingDepartment.employees.push(employee);
-                if (employee.isManager) {
-                    existingDepartment.managerName = employee.name;
-                }
-            } else {
-                const newDepartment: Department = {
-                    name: employee.department,
-                    managerName: employee.isManager ? employee.name : '',
-                    employees: [employee]
-                };
-                organization.departments.push(newDepartment);
-            }
-        }
-
-        resolve(organization);
-    });
-}
-
 function meCsvToJson(csvData: string): Promise<any[]> {
     return new Promise((resolve, reject) => {
       const jsonArray: any[] = [];
@@ -117,13 +61,6 @@ function meCsvToJson(csvData: string): Promise<any[]> {
     });
   }
 
-// Example usage
-const csvData = 'name,department,salary,office,isManager,skill1,skill2,skill3\nJohn,CDN,80,Lisbon,FALSE,Caching,C++,AI\nAlice,CDN,90,Lisbon,TRUE,Java,Python,';
-
-orgCsvToJson(csvData).then((formattedData) => {
-    console.log(JSON.stringify(formattedData, null, 2));
-});
-
 
 app.get("/", (ctx) => {
     return ctx.text(
@@ -135,17 +72,43 @@ app.get("/", (ctx) => {
 app.get("/organization-chart", async (ctx) => {
     // Initialize Firebase
     const firebaseApp = initializeApp(firebaseConfig);
-    console.log("");
     const database = getDatabase(firebaseApp);
-    console.log("");
     const db = getFirestore(firebaseApp);
     //console.log(db);
     try {
-        // Get a list of cities from your database
         const organization = collection(db, 'departments');
         const organizationSnapshot = await getDocs(organization);
-        const jsonValues = organizationSnapshot.docs.map(doc => doc.data()); 
-        return ctx.text(JSON.stringify(jsonValues, null, 2));
+        
+        const departments = organizationSnapshot.docs.map(departmentDoc => {
+          const departmentData = departmentDoc.data();
+        
+          const manager = departmentData.employees.find(employee => employee.isManager);
+          const managerName = manager ? manager.name : "";
+        
+          const employees = departmentData.employees.map(employee => {
+            return {
+              name: employee.name,
+              department: departmentData.name,
+              salary: employee.salary,
+              office: employee.office,
+              isManager: employee.isManager,
+              skills: employee.skills
+            };
+          });
+        
+          return {
+            name: departmentData.name,
+            managerName: managerName,
+            employees: employees
+          };
+        });
+        
+        const result = {
+          departments: departments
+        };
+        
+        return ctx.text(JSON.stringify(result, null, 2));
+        
         //});
         // // Fetch data from Firebase
         // console.log("passed 2nd");
@@ -163,19 +126,44 @@ app.get("/organization-chart", async (ctx) => {
 });
 
 app.get("/me", async (ctx) => {
-    const csvData = 'name,favorite show,github url,linkedIn,hobbie1,hobbie2\nShashank Raghuraj,Ted Lasso,https://github.com/ShashankRaghuraj,https://www.linkedin.com/in/shashank-raghuraj-06ba72219/,Basketball,Chess';
-    let jsonString = '';
-    try {
-        const jsonArray = await meCsvToJson(csvData);
-        console.log(jsonArray);
-        const jsonString = JSON.stringify(jsonArray, null, 2);
-        const currentTime = new Date().toLocaleTimeString();
-        console.log(jsonString);
-        return ctx.text(jsonString);
-    } catch (error) {
-        console.error('ERROR organization chart data.' + error);
-        return ctx.text('ERROR organization chart data.' + error);
-    }
+    const firebaseApp = initializeApp(firebaseConfig);
+    const database = getDatabase(firebaseApp);
+    const db = getFirestore(firebaseApp);
+    const organization = collection(db, 'aboutMe');
+    const organizationSnapshot = await getDocs(organization);
+    const jsonValues = organizationSnapshot.docs.map(doc => {
+        const data = doc.data();
+
+        // Assuming the fields exist in the Firebase documents
+        const name = data.name || "";  // Replace with the actual field name in your Firebase document
+        const homepage = data.homepage || "";  // Replace with the actual field name in your Firebase document
+        const githubURL = data.githubURL || "";  // Replace with the actual field name in your Firebase document
+        const interestingFact = data.interestingFact || "";  // Replace with the actual field name in your Firebase document
+        const skills = data.skills || [];  // Replace with the actual field name in your Firebase document
+
+        return {
+            name,
+            homepage,
+            githubURL,
+            interestingFact,
+            skills,
+        };
+    });
+    return ctx.text(JSON.stringify(jsonValues, null, 2));
+
+    // const csvData = 'name,favorite show,github url,linkedIn,hobbie1,hobbie2\nShashank Raghuraj,Ted Lasso,https://github.com/ShashankRaghuraj,https://www.linkedin.com/in/shashank-raghuraj-06ba72219/,Basketball,Chess';
+    // let jsonString = '';
+    // try {
+    //     const jsonArray = await meCsvToJson(csvData);
+    //     console.log(jsonArray);
+    //     const jsonString = JSON.stringify(jsonArray, null, 2);
+    //     const currentTime = new Date().toLocaleTimeString();
+    //     console.log(jsonString);
+    //     return ctx.text(jsonString);
+    // } catch (error) {
+    //     console.error('ERROR organization chart data.' + error);
+    //     return ctx.text('ERROR organization chart data.' + error);
+    // }
 });
 export default app;
 
