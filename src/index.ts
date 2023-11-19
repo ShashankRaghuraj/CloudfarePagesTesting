@@ -86,17 +86,6 @@ app.get("/organization-chart", async (ctx) => {
         };
         
         return ctx.text(JSON.stringify(result, null, 2));
-        
-        //});
-        // // Fetch data from Firebase
-        // console.log("passed 2nd");
-        // const snapshot = await get(ref(database, '{'));
-        // console.log("passed 3rd");
-        // const firebaseData: Organization = snapshot.val();
-        
-        // // Send the data in the response
-        // const jsonString = JSON.stringify(firebaseData, null, 2);
-        // return ctx.text(jsonString);
     } catch (error) {
         console.error('ERROR fetching organization chart data.' + error);
         return ctx.text('ERROR fetching organization chart data.' + error);
@@ -129,43 +118,5 @@ app.get("/me", async (ctx) => {
     });
     return ctx.text(JSON.stringify(jsonValues, null, 2));
 
-    // const csvData = 'name,favorite show,github url,linkedIn,hobbie1,hobbie2\nShashank Raghuraj,Ted Lasso,https://github.com/ShashankRaghuraj,https://www.linkedin.com/in/shashank-raghuraj-06ba72219/,Basketball,Chess';
-    // let jsonString = '';
-    // try {
-    //     const jsonArray = await meCsvToJson(csvData);
-    //     console.log(jsonArray);
-    //     const jsonString = JSON.stringify(jsonArray, null, 2);
-    //     const currentTime = new Date().toLocaleTimeString();
-    //     console.log(jsonString);
-    //     return ctx.text(jsonString);
-    // } catch (error) {
-    //     console.error('ERROR organization chart data.' + error);
-    //     return ctx.text('ERROR organization chart data.' + error);
-    // }
 });
 export default app;
-
-
-// import {Hono} from "hono";
-// const app = new Hono();
-// import * as fs from 'fs';
-// import csvParser from 'csv-parser';
-
-
-// app.get("/", (ctx) => {
-//     return ctx.text(
-//         //creating a table of contents
-//         "This is the cloudfare general assessment\n\n1) type in /organization_chart to see the organization chart\n2)type in /me to get information in a json file about me!"
-//     )
-// })
-
-// app.get("/organization_chart", (ctx) => {
-//     //insert the json value here
-//     return ctx.text("");
-// })
-// app.get("/me", (ctx) => {
-//     return ctx.text(
-//         "this is a cloudfare test"
-//     )
-// })
-// export default 
