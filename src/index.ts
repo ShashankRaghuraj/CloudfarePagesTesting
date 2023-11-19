@@ -40,28 +40,6 @@ interface Organization {
     departments: Department[];
 }
 
-function meCsvToJson(csvData: string): Promise<any[]> {
-    return new Promise((resolve, reject) => {
-      const jsonArray: any[] = [];
-  
-      const lines = csvData.split('\n');
-      const headers = lines[0].split(',').map(header => header.trim());
-  
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',');
-        const entry: any = {};
-  
-        for (let j = 0; j < headers.length; j++) {
-          entry[headers[j]] = values[j].trim();
-        }
-  
-        jsonArray.push(entry);
-      } 
-      resolve(jsonArray);
-    });
-  }
-
-
 app.get("/", (ctx) => {
     return ctx.text(
         //creating a table of contents
