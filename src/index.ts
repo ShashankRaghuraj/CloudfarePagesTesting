@@ -2,6 +2,10 @@ import { Hono } from 'hono';
 const app = new Hono();
 import * as fs from 'fs';
 import csvParser from 'csv-parser';
+// Import Firebase and its modules
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, get } from 'firebase/database';
+import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
 
 interface Employee {
     name: string;
@@ -12,6 +16,20 @@ interface Employee {
     skills: string[];
 }
 
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+    apiKey: "AIzaSyC0bVYMlcFtrx47jeJNyLzeP6URvWtBoAU",
+    authDomain: "organization-data-44cfc.firebaseapp.com",
+    databaseURL: "https://organization-data-44cfc-default-rtdb.firebaseio.com",
+    projectId: "organization-data-44cfc",
+    storageBucket: "organization-data-44cfc.appspot.com",
+    messagingSenderId: "979375300051",
+    appId: "1:979375300051:web:651b7f8491ce6f267a2326",
+    measurementId: "G-LW1MYCZLHF"
+  };
+
 interface Department {
     name: string;
     managerName: string;
@@ -20,6 +38,18 @@ interface Department {
 
 interface Organization {
     departments: Department[];
+}
+
+function csvFileToString(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
 }
 
 function orgCsvToJson(csvData: string): Promise<Organization> {
@@ -147,6 +177,7 @@ function convertCsvToJson(csvFilePath: string): Promise<Organization> {
     });
 }
 
+
 app.get("/", (ctx) => {
     return ctx.text(
         //creating a table of contents
@@ -154,101 +185,39 @@ app.get("/", (ctx) => {
     )
 });
 
-app.get("/organization-chart", async (ctx) => {    
-    const csvData: string = `
-    name,department,salary,office,isManager,skill1,skill2,skill3
-    John,CDN,80,Lisbon,FALSE,Caching,C++,AI
-    Ibrahim Gould,Bots,262,Austin,FALSE,HTML,Performance,GoLang
-    Violeta Cortes,Developer Platform,98,Austin,FALSE,Caching,C++,AI
-    Banks Fitzpatrick,CDN,250,Singapore,FALSE,Typescript,Rust,GoLang
-    Annabella Velasquez,Accounting,172,San Francisco,FALSE,HTML,Performance,Postgres
-    Braden McMahon,Bots,219,San Francisco,TRUE,Distributed Systems,Rust,AI
-    Belen Norman,DeveloperPlatform,252,London,TRUE,HTML,Rust,GoLang
-    Aziel Gibson,CDN,145,New York,TRUE,Caching,C++,AI
-    Eden Roy,Accounting,190,Austin,FALSE,Typescript,C++,GoLang
-    Marcelo Sullivan,Bots,241,Singapore,FALSE,HTML,CSS,Postgres
-    Melanie Esparza,Developer Platform,231,San Francisco,FALSE,Distributed Systems,Rust,A
-    Carl Nava,CDN,230,London,FALSE,HTML,Rust,GoLang
-    Scout Hansen,Accounting,259,New York,FALSE,Caching,C++,AI
-    Charlie West,Bots,131,Lisbon,FALSE,Typescript,C++,GoLang
-    Remi Hendrix,Developer Platform,162,Austin,FALSE,HTML,CSS,Postgres
-    Korbyn Cuevas,CDN,86,Singapore,FALSE,Distributed Systems,Rust,AI
-    Adele Castillo,Accounting,237,SanFrancisco,FALSE,HTML,Rust,GoLang
-    Kai Rojas,Bots,102,London,FALSE,Caching,C++,AI
-    Adaline Murphy,Developer Platform,238,New York,FALSE,Typescript,C++,GoLang
-    Cameron Doyle,CDN,81,Lisbon,FALSE,HTML,CSS,Postgres
-    Annalise Fuller,Accounting,172,Austin,FALSE,Distributed Systems,Rust,AI
-    Andre Spears,Bots,106,Singapore,FALSE,HTML,Performance,GoLang
-    Isabela Casey,Developer Platform,283,San Francisco,FALSE,Caching,C++,AI
-    Armando Trujillo,CDN,178,London,FALSE,Typescript,CSS,GoLang
-    Danielle dkins,Accounting,89,New York,FALSE,HTML,Rust,Postgres
-    Kylo Hayes,Bots,213,London,FALSE,Distributed Systems,Performance,AI
-    Iris Frye,Developer Platform,212,New York,FALSE,HTML,C++,GoLang
-    Franco Short,CDN,82,Lisbon,FALSE,Caching,CSS,AI
-    Cheyenne Fowler,Accounting,150,Austin,FALSE,Typescript,Rust,GoLang
-    Kameron Colon,Bots,149,Singapore,FALSE,HTML,Performance,Postgres
-    Remy Wang,Developer Platform,94,San Francisco,FALSE,Distributed Systems,C++,AI
-    Cohen Dougherty,CDN,157,London,FALSE,HTML,CSS,GoLang
-    Alisson Russell,Accounting,214,New York,FALSE,Caching,Rust,AI
-    Weston McIntosh,Bots,130,Lisbon,FALSE,Typescript,Performance,GoLang
-    Gwen Gutierrez,Developer Platform,259,Austin,FALSE,HTML,C++,Postgres
-    Luca Acosta,CDN,175,Singapore,FALSE,Distributed Systems,CSS,AI
-    Kaia Wyatt,Accounting,112,San Francisco,FALSE,HTML,Rust,GoLang
-    Sam Hubbard,Bots,87,London,FALSE,Caching,Performance,AI
-    Rosie Hull,Developer Platform,227,New York,FALSE,Typescript,C++,GoLang
-    Salem Foley,CDN,290,London,FALSE,HTML,CSS,Postgres
-    Zaylee Blair,Accounting,136,New York,FALSE,Distributed Systems,Rust,AI
-    Troy Bartlett,Bots,103,Lisbon,FALSE,HTML,Performance,GoLang
-    Aubrielle Collier,Developer Platform,225,Austin,FALSE,Distributed Systems,C++,AI
-    Edison Hamilton,CDN,267,Singapore,FALSE,HTML,CSS,GoLang
-    Mackenzie Gill,Accounting,101,San Francisco,FALSE,Caching,Rust,Postgres
-    Matthias Greene,Bots,288,London,FALSE,Typescript,Performance,AI
-    Selena Hutchinson,Developer Platform,263,New York,FALSE,HTML,C++,GoLang
-    Korbin Francis,CDN,108,Lisbon,FALSE,Distributed Systems,Rust,AI
-    Daniella Noble,Accounting,289,Austin,FALSE,HTML,Performance,GoLang
-    Idris Kent,Bots,297,Singapore,FALSE,Caching,C++,Postgres
-    Jazmine Holt,Developer Platform,139,San Francisco,FALSE,Typescript,Rust,AI
-    Niko Molina,CDN,229,London,FALSE,HTML,Performance,GoLang
-    Alexandria Booth,Accounting,156,New York,FALSE,Distributed Systems,C++,AI
-    Chaim Cisneros,Bots,80,Austin,FALSE,Distributed Systems,Rust,GoLang
-    Janelle Hall,Developer Platform,158,Singapore,FALSE,HTML,Performance,Postgres
-    Thomas Nixon,CDN,201,San Francisco,FALSE,Caching,C++,AI
-    Deborah Taylor,Accounting,186,London,FALSE,Typescript,Rust,GoLang
-    Jackson Parsons,Bots,150,New York,FALSE,HTML,Performance,AI
-    Maia Blackburn,Developer Platform,294,Austin,FALSE,Distributed Systems,C++,GoLang
-    Zahir Hartman,CDN,106,Singapore,FALSE,HTML,Rust,Postgres
-    Kennedi Palacios,Accounting,300,San Francisco,FALSE,Caching,Performance,AI
-    Thaddeus Dillon,Bots,172,London,FALSE,Typescript,C++,GoLang
-    Laurel Moore,Developer Platform,194,New York,FALSE,HTML,Rust,AI
-    Levi Rivers,CDN,141,Austin,FALSE,Distributed Systems,Performance,GoLang
-    Kiana Ray,Accounting,104,Austin,FALSE,Distributed Systems,C++,Postgres
-    Arlo Person,Bots,203,Singapore,FALSE,HTML,Rust,AI
-    Dylan Evans,Developer Platform,90,San Francisco,FALSE,Caching,Performance,GoLang
-    Elias Quintero,CDN,215,London,FALSE,Typescript,C++,AI
-    Keyla Hurst,Accounting,137,New York,FALSE,HTML,Rust,GoLang
-    Neil Carroll,Bots,188,Austin,FALSE,Distributed Systems,Performance,Postgres
-    Zara Bradford,Developer Platform,163,Austin,FALSE,HTML,C++,AI
-    Ander Quintero,CDN,226,Singapore,FALSE,Caching,Rust,GoLang
-    Keyla Bravo,Accounting,242,San Francisco,FALSE,Typescript,Performance,AI
-    Genesis Felix,Bots,187,London,FALSE,HTML,C++,GoLang
-    Paisleigh Sherman,Developer Platform,118,New York,FALSE,Distributed Systems,Rust,Postgres
-    Adan Sanford,CDN,280,Austin,FALSE,Distributed Systems,Performance,AI
-    Emerald Macdonald,Accounting,228,Austin,FALSE,HTML,C++,GoLang
-    Hugh Bowman,Bots,139,Singapore,FALSE,Caching,Rust,AI
-    Fiona Robinson,Developer Platform,300,San Francisco,FALSE,Typescript,Performance,GoLang
-    Matthew Christensen,CDN,204,London,FALSE,HTML,C++,Postgres
-    Carmen McLaughlin,Accounting,221,New York,FALSE,Distributed Systems,Rust,AI
-    Ibrahim Gould,Bots,262,Austin,FALSE,HTML,Performance,GoLang
-    Violeta Cortes,Developer Platform,98,Austin,FALSE,Caching,C++,AI
-    Banks Fitzpatrick,CDN,250,Singapore,FALSE,Typescript,Rust,GoLang
-    Annabella Velasquez,Accounting,172,San Francisco,FALSE,HTML,Performance,Postgres
-    Sullivan Nunez,Bots,165,London,FALSE,Distributed Systems,C++,AI
-    Mya Hardy,Developer Platform,127,New York,FALSE,Distributed Systems,Rust,GoLang
-    Jayceon Murillo,CDN,128,Austin,FALSE,HTML,Performance,AI
-    Mikaela Hampton,Accounting,89,Austin,FALSE,Caching,C++,GoLang
-    Hank Sandoval,Bots,165,Singapore,FALSE,Typescript,Rust,Postgres
-    Elsie McCarthy,Developer Platform,128,San Francisco,FALSE,HTML,Rust,AI
-    Devin Weber,CDN,285,London,FALSE,Distributed Systems,Performance,GoLang`;
+app.get("/test", async (ctx) => {
+    // Initialize Firebase
+    const firebaseApp = initializeApp(firebaseConfig);
+    console.log("");
+    const database = getDatabase(firebaseApp);
+    console.log("");
+    const db = getFirestore(firebaseApp);
+    //console.log(db);
+    try {
+        // Get a list of cities from your database
+        const organization = collection(db, 'departments');
+        const organizationSnapshot = await getDocs(organization);
+        const jsonValues = organizationSnapshot.docs.map(doc => doc.data()); 
+        return ctx.text(JSON.stringify(jsonValues, null, 2));
+        //});
+        // // Fetch data from Firebase
+        // console.log("passed 2nd");
+        // const snapshot = await get(ref(database, '{'));
+        // console.log("passed 3rd");
+        // const firebaseData: Organization = snapshot.val();
+        
+        // // Send the data in the response
+        // const jsonString = JSON.stringify(firebaseData, null, 2);
+        // return ctx.text(jsonString);
+    } catch (error) {
+        console.error('ERROR fetching organization chart data.' + error);
+        return ctx.text('ERROR fetching organization chart data.' + error);
+    }
+});
+
+app.get("/organization-chart", async (ctx) => {
+    const csvData: string = await csvFileToString("input/general_data.csv");    
+    
     try {
         const jsonArray = await orgCsvToJson(csvData);
         console.log(jsonArray);
