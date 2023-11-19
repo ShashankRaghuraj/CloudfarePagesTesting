@@ -125,59 +125,6 @@ orgCsvToJson(csvData).then((formattedData) => {
 });
 
 
-//function convertCsvToJson(csvFilePath: string): Promise<Organization> {  
-function convertCsvToJson(csvFilePath: string): Promise<Organization> {
-        
-    const departments: { [key: string]: Department } = {};
-
-    return new Promise((resolve, reject) => {
-        console.log('reading fine'+csvFilePath);
-        const readStream = fs.createReadStream(csvFilePath);
-        
-        //return "Inside csvtojson function..next step - "+csvFilePath;
-        readStream
-            .pipe(csvParser())
-            .on('data', (row) => {
-                const employee: Employee = {
-                    name: row.name,
-                    department: row.department,
-                    salary: parseFloat(row.salary),
-                    office: row.office,
-                    isManager: row.isManager.toLowerCase() === 'true',
-                    skills: [row.skill1, row.skill2, row.skill3].filter(Boolean)
-                };
-
-                if (!departments[row.department]) {
-                    departments[row.department] = {
-                        name: row.department,
-                        managerName: '',
-                        employees: []
-                    };
-                }
-
-                if (employee.isManager) {
-                    departments[row.department].managerName = employee.name;
-                }
-
-                departments[row.department].employees.push(employee);
-            })
-            .on('end', () => {
-                const organization: Organization = {
-                    departments: Object.values(departments)
-                };
-                resolve(organization);
-            })
-            .on('error', (error) => {
-                reject(error);
-            });
-
-        readStream.on('error', (error) => {
-            reject(error);
-        });
-    });
-}
-
-
 app.get("/", (ctx) => {
     return ctx.text(
         //creating a table of contents
@@ -185,7 +132,7 @@ app.get("/", (ctx) => {
     )
 });
 
-app.get("/test", async (ctx) => {
+app.get("/organization-chart", async (ctx) => {
     // Initialize Firebase
     const firebaseApp = initializeApp(firebaseConfig);
     console.log("");
@@ -214,24 +161,6 @@ app.get("/test", async (ctx) => {
         return ctx.text('ERROR fetching organization chart data.' + error);
     }
 });
-
-app.get("/organization-chart", async (ctx) => {
-    const csvData: string = await csvFileToString("input/general_data.csv");    
-    
-    try {
-        const jsonArray = await orgCsvToJson(csvData);
-        console.log(jsonArray);
-        const jsonString = JSON.stringify(jsonArray, null, 2);
-        const currentTime = new Date().toLocaleTimeString();
-        console.log('Current time: ' + currentTime);
-        console.log('i am outside'); // This line will be printed after the JSON data
-        return ctx.text(jsonString);
-    } catch (error) {
-        console.error('ERROR organization chart data.' + error);
-        return ctx.text('ERROR organization chart data.' + error);
-    }
-}
-);
 
 app.get("/me", async (ctx) => {
     const csvData = 'name,favorite show,github url,linkedIn,hobbie1,hobbie2\nShashank Raghuraj,Ted Lasso,https://github.com/ShashankRaghuraj,https://www.linkedin.com/in/shashank-raghuraj-06ba72219/,Basketball,Chess';
