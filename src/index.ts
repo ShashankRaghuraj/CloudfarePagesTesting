@@ -54,54 +54,58 @@ app.get("/", (ctx) => {
 
 // Handling the organization chart endpoint
 app.get("/organization-chart", async (ctx) => {
-    // Initializing Firebase app and retrieving data
-    const firebaseApp = initializeApp(firebaseConfig);
-    const database = getDatabase(firebaseApp);
-    const db = getFirestore(firebaseApp);
+// Initializing Firebase app and retrieving data
+const firebaseApp = initializeApp(firebaseConfig);
+const database = getDatabase(firebaseApp);
+const db = getFirestore(firebaseApp);
 
-    try {
-        // Retrieving organization data from Firestore
-        const organization = collection(db, 'departments');
-        const organizationSnapshot = await getDocs(organization);
+try {
+    // Retrieving organization data from Firestore
+    const organization = collection(db, 'departments');
+    const organizationSnapshot = await getDocs(organization);
 
-        // Mapping Firestore data to a structured organization format
-        const departments = organizationSnapshot.docs.map(departmentDoc => {
-            const departmentData = departmentDoc.data();
+    // Mapping Firestore data to a structured organization format
+    const departments = organizationSnapshot.docs.map(departmentDoc => {
+        const departmentData = departmentDoc.data();
 
-            // Extracting manager information and employee details
-            const manager = departmentData.employees.find(employee => employee.isManager);
-            const managerName = manager ? manager.name : "";
-            const employees = departmentData.employees.map(employee => {
-                return {
-                    name: employee.name,
-                    department: departmentData.name,
-                    salary: employee.salary,
-                    office: employee.office,
-                    isManager: employee.isManager,
-                    skills: employee.skills
-                };
-            });
-
-            // Constructing department object
+        // Extracting manager information and employee details
+        const manager = departmentData.employees.find(employee => employee.isManager);
+        const managerName = manager ? manager.name : "";
+        const employees = departmentData.employees.map(employee => {
             return {
-                name: departmentData.name,
-                managerName: managerName,
-                employees: employees
+                name: employee.name,
+                department: departmentData.name,
+                salary: employee.salary,
+                office: employee.office,
+                isManager: employee.isManager,
+                skills: employee.skills
             };
         });
 
-        // Constructing the final result object
-        const result = {
-            departments: departments
+        // Constructing department object
+        return {
+            name: departmentData.name,
+            managerName: managerName,
+            employees: employees
         };
+    });
 
-        // Returning the result as a formatted JSON
-        return ctx.text(JSON.stringify(result, null, 2));
-    } catch (error) {
-        // Handling errors during data retrieval
-        console.error('ERROR fetching organization chart data.' + error);
-        return ctx.text('ERROR fetching organization chart data.' + error);
-    }
+    // Constructing the final result object
+    const result = {
+        organization: {
+            departments: departments
+        }
+    };
+
+    // Returning the result as a formatted JSON
+    return ctx.json(result);
+} catch (error) {
+    // Handling errors during data retrieval
+    console.error('ERROR fetching organization chart data.' + error);
+    return ctx.text('ERROR fetching organization chart data.' + error);
+}
+
+
 });
 
 // Handling the "me" endpoint
@@ -134,8 +138,8 @@ app.get("/me", async (ctx) => {
         };
     });
 
-    // Returning the "me" data as a formatted JSON
-    return ctx.text(JSON.stringify(jsonValues, null, 2));
+    // Returning the result as a formatted JSON
+    return ctx.json(jsonValues);
 });
 
 // Exporting the Hono application instance
